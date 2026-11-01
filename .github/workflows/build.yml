@@ -60,6 +60,13 @@ jobs:
             f.write(content)
         '
 
+    - name: Pre-accept Android SDK Licenses
+      run: |
+        mkdir -p /home/runner/.buildozer/android/platform/android-sdk/licenses
+        echo "24333f8a43b6806230950647a55b165219315906" > /home/runner/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+        echo "84831b9409646a918e30573bab4c9c91346d8abd" > /home/runner/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
+        echo "d56f5187479451eabf01fb78af6dfcb139a64810" > /home/runner/.buildozer/android/platform/android-sdk/licenses/intel-android-extra-license
+
     - name: Build with Buildozer
       run: |
         buildozer -v android debug
