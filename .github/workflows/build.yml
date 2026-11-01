@@ -5,74 +5,59 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
+    build:
+      runs-on: ubuntu-latest
+      steps:
+      - uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev cmake libffi-dev libssl-dev lld
+      - name: Initialize Buildozer Spec
+        run: |
+          pip install buildozer
+          buildozer init
 
-    - name: Install Buildozer
-      run: |
-        pip install --upgrade pip
-        pip install buildozer cython==0.29.36
+      - name: Configure buildozer.spec
+        run: |
+          python3 -c '
+          import re
 
-    - name: Initialize Buildozer Spec
-      run: |
-        buildozer init
+          with open("buildozer.spec", "r") as f:
+              content = f.read()
 
-    - name: Configure buildozer.spec
-      run: |
-        python3 -c '
-        import re
+          settings = {
+              "android.api": "33",
+              "android.minapi": "21",
+              "android.build_tools_version": "33.0.2",
+              "android.permissions": "RECEIVE_BOOT_COMPLETED, WAKE_LOCK",
+              "requirements": "python3,kivy,jnius",
+              "title": "Study Lockdown",
+              "package.name": "studytracker"
+          }
 
-        with open("buildozer.spec", "r") as f:
-            content = f.read()
+          for key in settings:
+              content = re.sub(rf"^[#\s]*{re.escape(key)}\s*=.*$", "", content, flags=re.MULTILINE)
 
-        settings = {
-            "android.api": "33",
-            "android.minapi": "21",
-            "android.build_tools_version": "33.0.2",
-            "android.permissions": "RECEIVE_BOOT_COMPLETED, WAKE_LOCK",
-            "requirements": "python3,kivy,jnius",
-            "title": "Study Lockdown",
-            "package.name": "studytracker"
-        }
+          replacement = "[app]\n"
+          for key, val in settings.items():
+              replacement += f"{key} = {val}\n"
 
-        for key in settings:
-            content = re.sub(rf"^[#\s]*{re.escape(key)}\s*=.*$", "", content, flags=re.MULTILINE)
+          content = content.replace("[app]", replacement, 1)
 
-        replacement = "[app]\n"
-        for key, val in settings.items():
-            replacement += f"{key} = {val}\n"
+          with open("buildozer.spec", "w") as f:
+              f.write(content)
+          '
 
-        content = content.replace("[app]", replacement, 1)
+      - name: Build with Buildozer Action
+        uses: kivy/buildozer-action@main
+        with:
+          command: buildozer -v android debug
 
-        with open("buildozer.spec", "w") as f:
-            f.write(content)
-        '
-
-    - name: Pre-accept Android SDK Licenses
-      run: |
-        mkdir -p /home/runner/.buildozer/android/platform/android-sdk/licenses
-        echo "24333f8a43b6806230950647a55b165219315906" > /home/runner/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-        echo "84831b9409646a918e30573bab4c9c91346d8abd" > /home/runner/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
-        echo "d56f5187479451eabf01fb78af6dfcb139a64810" > /home/runner/.buildozer/android/platform/android-sdk/licenses/intel-android-extra-license
-
-    - name: Build with Buildozer
-      run: |
-        buildozer -v android debug
-
-    - name: Upload APK Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: study-lockdown-apk
-        path: bin/*.apk
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: study-lockdown-apk
+          path: bin/*.apk
