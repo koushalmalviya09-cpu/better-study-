@@ -33,26 +33,31 @@ jobs:
       run: |
         python3 -c '
         import re
+
         with open("buildozer.spec", "r") as f:
-            text = f.read()
+            content = f.read()
 
-        def set_val(key, val, text):
-            pattern = re.compile(r"^[#\s]*" + key + r"\s*=.*$", re.MULTILINE)
-            if pattern.search(text):
-                return pattern.sub(f"{key} = {val}", text)
-            else:
-                return text + f"\n{key} = {val}\n"
+        settings = {
+            "android.api": "33",
+            "android.minapi": "21",
+            "android.build_tools_version": "33.0.2",
+            "android.permissions": "RECEIVE_BOOT_COMPLETED, WAKE_LOCK",
+            "requirements": "python3,kivy,jnius",
+            "title": "Study Lockdown",
+            "package.name": "studytracker"
+        }
 
-        text = set_val("android.api", "33", text)
-        text = set_val("android.minapi", "21", text)
-        text = set_val("android.build_tools_version", "33.0.2", text)
-        text = set_val("android.permissions", "RECEIVE_BOOT_COMPLETED, WAKE_LOCK", text)
-        text = set_val("requirements", "python3,kivy,jnius", text)
-        text = set_val("title", "Study Lockdown", text)
-        text = set_val("package.name", "studytracker", text)
+        for key in settings:
+            content = re.sub(rf"^[#\s]*{re.escape(key)}\s*=.*$", "", content, flags=re.MULTILINE)
+
+        replacement = "[app]\n"
+        for key, val in settings.items():
+            replacement += f"{key} = {val}\n"
+
+        content = content.replace("[app]", replacement, 1)
 
         with open("buildozer.spec", "w") as f:
-            f.write(text)
+            f.write(content)
         '
 
     - name: Build with Buildozer
